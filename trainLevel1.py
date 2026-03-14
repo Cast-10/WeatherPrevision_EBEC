@@ -7,8 +7,6 @@ from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
 import utils
 
-weather = pd.read_csv("metherology_dataset.csv")
-
 def trainLevel1(df):
     # Preparation
     df = utils.setUp(df)
@@ -24,7 +22,4 @@ def trainLevel1(df):
     model.fit(X_train, y_train)
     print("Finnished train.")
     
-    return model
-
-weather = utils.setUp(weather)
-model = trainLevel1(weather)
+    return model, X_val, X_test, y_val, y_test
