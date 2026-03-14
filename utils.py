@@ -6,13 +6,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
 
-weather = pd.read_csv("metherology_dataset.csv")
-weather.columns = weather.columns.str.strip()
-
 def setUp(df):
     # 1. Init
     df = df.copy()
     df = df.dropna() # Remove lines with NaN values
+    df.columns = df.columns.str.strip()
     
     # 2. Feature Engineering
     df['month'] = pd.to_datetime(df['time']).dt.month
@@ -53,3 +51,25 @@ def train_validate_test_split(X, y, val_size=0.15, test_size=0.15, randomState=4
         X_temp, y_temp, test_size=relative_test_size, random_state=randomState, stratify=y
     )
     return X_train, X_val, X_test, y_train, y_val, y_test
+
+def print_f1_score(y_true, y_pred, dataset_name="Validation"):
+    """
+    Prints a full evaluation report including F1 score.
+    
+    Args:
+        y_true       : real labels
+        y_pred       : model predicted labels
+        dataset_name : just a label for printing (e.g. "Validation", "Test")
+    """
+    f1 = f1_score(y_true, y_pred)
+    
+    print(f"===== {dataset_name} Evaluation =====")
+    print(f"F1 Score: {f1:.4f}")
+    print()
+    print("Full Report:")
+    print(classification_report(y_true, y_pred, target_names=["No Rain", "Rain"]))
+    print("Confusion Matrix:")
+    print(confusion_matrix(y_true, y_pred))
+    print("  [TN  FP]")
+    print("  [FN  TP]")
+    print("=====================================\n")
