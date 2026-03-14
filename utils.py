@@ -6,6 +6,14 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
 
+def remove_outliers(df, columns, k=3):
+    mask = pd.Series(True, index=df.index)
+    for col in columns:
+        mean, std = df[col].mean(), df[col].std()
+        mask &= (df[col] - mean).abs() <= k * std
+    return df[mask]
+
+
 def setUp(df):
     # 1. Init
     df = df.copy()
@@ -15,7 +23,6 @@ def setUp(df):
     # 2. Feature Engineering
     df['month'] = pd.to_datetime(df['time']).dt.month
     df['hour'] = pd.to_datetime(df['time']).dt.hour
-    df['isRaining'] = (df['rain'] > 0).astype(int)
     
     district_map = {
         "Aveiro": 1,
