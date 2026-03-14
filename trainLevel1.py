@@ -5,20 +5,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
-import setUp
+import utils
 
 def trainLevel1(df):
     # Preparation
-    df = setUp.setUp(df)
+    df = utils.setUp(df)
     
+    X = df.drop(columns=['rain', 'isRaining'])
+    y = df['isRaining']
     
+    X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X,y)
     
-    # Split (80% treino / 20% teste)
-    # Usamos stratify=y para garantir que a proporção de "chuva" e "sol" 
-    # seja a mesma no treino e no teste (vital para um bom F1-score)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
     
     # O RandomForest é ótimo, mas vamos ajustar o 'class_weight'
     # Se chover pouco no teu dataset, o modelo tende a ignorar a chuva.
