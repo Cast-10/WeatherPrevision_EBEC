@@ -48,7 +48,7 @@ def train_validate_test_split(X, y, val_size=0.15, test_size=0.15, randomState=4
     )
     relative_test_size = test_size / temp_size  # e.g. 0.15/0.30 = 0.50
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=relative_test_size, random_state=randomState, stratify=y
+        X_temp, y_temp, test_size=relative_test_size, random_state=randomState, stratify=y_temp
     )
     return X_train, X_val, X_test, y_train, y_val, y_test
 
