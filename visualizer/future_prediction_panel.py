@@ -1,53 +1,26 @@
 import streamlit as st
-import pandas as pd
 
 
 class FuturePredictionPanel:
-    def __init__(self, df: pd.DataFrame):
-        # Save the dataset to know the last historical day available
-        self.df = df.copy()
-
-    def get_last_available_day(self):
-        # Return the last day that exists in the historical dataset
-        return self.df["time"].dt.date.max()
-
-    def is_future_day(self, selected_day) -> bool:
-        # Check if the selected day is after the last historical day
-        return selected_day > self.get_last_available_day()
-
-    def predict(self, location: str, selected_day):
-        # This method will later be replaced by the real ML prediction logic
+    def __init__(self):
+        # This class only displays future prediction results
         pass
 
-    def get_placeholder_prediction(self) -> dict:
-        # Temporary values until the ML model is connected
-        return {
-            "temperature": 0.0,
-            "rain": 0.0,
-            "humidity": 0.0,
-            "wind": 0.0,
-            "pressure": 0.0
-        }
-
-    def render(self, location: str, selected_day):
-        # Show a prediction panel only for future days
-        if not self.is_future_day(selected_day):
+    def render(self, ml_result):
+        # Only show this panel for future days
+        if ml_result is None or not ml_result.is_future_day():
             return
-
-        prediction = self.get_placeholder_prediction()
 
         st.markdown(
             "<h3 style='color:#0f172a; font-weight:700;'>Future Forecast (ML Prediction)</h3>",
             unsafe_allow_html=True
         )
 
-        st.info(
-            "The selected date is in the future. For now, this panel shows placeholder values until the ML model is connected."
-        )
-
         col1, col2, col3, col4, col5 = st.columns(5)
 
         def render_card(title, value, unit, col):
+            shown_value = 0.0 if value is None else value
+
             with col:
                 st.markdown(f"""
                     <div style="
@@ -63,7 +36,7 @@ class FuturePredictionPanel:
                             {title}
                         </div>
                         <div style="font-size:30px; font-weight:700; color:#0f172a; margin-bottom:8px;">
-                            {value:.1f}
+                            {shown_value:.1f}
                         </div>
                         <div style="font-size:13px; color:#475569;">
                             {unit}
@@ -71,8 +44,8 @@ class FuturePredictionPanel:
                     </div>
                 """, unsafe_allow_html=True)
 
-        render_card("Predicted Temp", prediction["temperature"], "°C", col1)
-        render_card("Predicted Rain", prediction["rain"], "mm", col2)
-        render_card("Predicted Humidity", prediction["humidity"], "%", col3)
-        render_card("Predicted Wind", prediction["wind"], "km/h", col4)
-        render_card("Predicted Pressure", prediction["pressure"], "hPa", col5)
+        render_card("Predicted Temp", ml_result.get_temperature(), "°C", col1)
+        render_card("Predicted Rain", ml_result.get_rain(), "mm", col2)
+        render_card("Predicted Humidity", ml_result.get_humidity(), "%", col3)
+        render_card("Predicted Wind", ml_result.get_wind(), "km/h", col4)
+        render_card("Predicted Pressure", ml_result.get_pressure(), "hPa", col5)

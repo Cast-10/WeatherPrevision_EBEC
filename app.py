@@ -8,6 +8,7 @@ from visualizer.hourly_weather_timeline import HourlyWeatherTimeline
 from visualizer.app_styler import AppStyler
 from visualizer.main_page import MainPage
 from visualizer.future_prediction_panel import FuturePredictionPanel
+from visualizer.ml_service import MLService
 
 st.set_page_config(page_title="Weather Interface", layout="wide")
 
@@ -15,34 +16,40 @@ st.set_page_config(page_title="Weather Interface", layout="wide")
 loader = DataLoader("metherology_dataset.csv")
 df = loader.load_data()
 
-# Create the weather service
+# Create services
 weather_service = WeatherService(df)
+ml_service = MLService(df)
 
-# Create the future prediction panel
-future_panel = FuturePredictionPanel(df)
-
-# Create and apply the visual style
+# Create UI helpers
+future_panel = FuturePredictionPanel()
 styler = AppStyler(
     title="Weather Forecast Interface",
     subtitle="Explore hourly weather conditions and future forecasts by district across Portugal"
 )
+main_page = MainPage()
+
+# Apply visual style
 styler.apply_styles()
 styler.render_header()
 
-# Create the main page structure
-main_page = MainPage()
+# Render main page intro
 main_page.render_intro()
 
-# Show the selector section
+# Render selector section
 styler.open_selector_box()
 selector = WeatherSelector(weather_service, future_days=7)
 selected_location, selected_day = selector.render()
 styler.close_box()
 
-# Only continue after both fields are selected
+# Build ML result only after both values are selected
+ml_result = None
 if selected_location is not None and selected_day is not None:
-    if future_panel.is_future_day(selected_day):
-        future_panel.render(selected_location, selected_day)
+    ml_result = ml_service.build_result(selected_location, selected_day)
+
+# Render content only after full selection
+if selected_location is not None and selected_day is not None:
+    if ml_result is not None and ml_result.is_future_day():
+        future_panel.render(ml_result)
     else:
         summary = WeatherSummaryCards(weather_service)
         summary.render(selected_location, selected_day)
