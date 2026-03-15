@@ -43,7 +43,7 @@ def trainLevel2(df):
     # Regression split (no stratification)
     X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X, y)
     
-    model = RandomForestRegressor(n_estimators=250, max_depth=15, n_jobs=-1)
+    model = RandomForestRegressor(n_estimators=250, max_depth=15, n_jobs=-1, random_state=seed)
     
     print("Training...")
     model.fit(X_train, y_train)
