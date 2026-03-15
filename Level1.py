@@ -8,52 +8,58 @@ import pandas as pd
 import utils
 import joblib
 
-weather = pd.read_csv("metherology_dataset.csv")
+def prepare_level1_data(df):
+    df = df.copy()
+    df = utils.setUp(df)
+    
+    # Target creation
+    df['isRaining'] = (df['rain'] > 0).astype(int)
 
-def trainLevel1(df, seed, estimators=100):
-    X = df.drop(columns=['isRaining'])
+    features = [
+        'location', 'month_sin', 'month_cos', 'day_sin', 'day_cos',
+        'hour_sin', 'hour_cos', 'relative_humidity_2m', 'dew_point_2m',
+        'pressure_msl', 'cloud_cover', 'cloud_cover_low',
+        'wind_speed_10m', 'wind_direction_10m'
+    ]
+
+    cols_to_clean = ['relative_humidity_2m', 'dew_point_2m', 'pressure_msl', 'wind_speed_10m']
+    df = utils.remove_outliers(df, cols_to_clean)
+
+    X = df[features]
     y = df['isRaining']
+    return X, y
+
+def trainLevel1(X, y):
+    # This function now ONLY handles the ML training
+    model = RandomForestClassifier(n_estimators=200, random_state=13, n_jobs=-1)
+    print("Training Level 1...")
+    model.fit(X, y)
+    print("Finished training.")
+    return model
+
+def testLevel1(df):
+    # 1. Prepare data
+    X, y = prepare_level1_data(df)
     
-    X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X,y)
+    # 2. Split
+    X_train, X_test, y_train, y_test = utils.train_test_split(X, y, shuffle=False, test_size=0.15)
+
+    # 3. Train using the specific train function
+    model = trainLevel1(X_train, y_train)
+
+    # 4. Evaluate
+    y_pred = model.predict(X_test)
+    f1 = f1_score(y_test, y_pred)
     
-    model = RandomForestClassifier(n_estimators=estimators, random_state=seed, n_jobs=-1)
-    
-    print("Training...")
-    model.fit(X_train, y_train)
-    print("Finnished training.")
-    
-    return model, X_val, X_test, y_val, y_test
+    print(f"\n===== Level 1 Evaluation =====")
+    print(f"F1 Score: {f1:.4f}")
+    print("==============================\n")
 
-weather = utils.setUp(weather)
-weather['isRaining'] = (weather['rain'] > 0).astype(int)
+# function to train level2 with all of the csv, to then predict the values that are going to be tested
+def Level1(df):
+    X, y = prepare_level1_data(df)
+    model = trainLevel1(X, y)
+    return model
 
-# 1. Define all features for the model
-features = [
-    'location', 'month_sin', 'month_cos', 'day_sin', 'day_cos',
-    'hour_sin', 'hour_cos', 'relative_humidity_2m', 'dew_point_2m',
-    'pressure_msl', 'cloud_cover', 'cloud_cover_low',
-    'wind_speed_10m', 'wind_direction_10m'
-]
-
-weather = weather[features + ['isRaining']]
-
-# 2. Define ONLY the columns that might have sensor glitches
-# We EXCLUDE location, sin, and cos columns here
-cols_to_clean = [
-    'relative_humidity_2m', 
-    'dew_point_2m', 
-    'pressure_msl', 
-    'wind_speed_10m'
-]
-
-weather = utils.remove_outliers(weather, cols_to_clean)
-
-model, X_val, X_test, y_val, y_test = trainLevel1(weather, seed=13, estimators=200)
-
-
-joblib.dump(model, 'finalModelLevel1.pkl')
-
-model_loaded = joblib.load('finalModelLevel1.pkl')
-
-y_pred_val = model_loaded.predict(X_val)
-current_f1 = utils.print_f1_score(y_val, y_pred_val)
+weather = pd.read_csv("metherology_dataset.csv")
+testLevel1(weather)
