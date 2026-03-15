@@ -16,7 +16,7 @@ def trainLevel1(df, seed, estimators=100):
     
     X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X,y)
     
-    model = RandomForestClassifier(n_estimators=estimators, random_state=seed)
+    model = RandomForestClassifier(n_estimators=estimators, random_state=seed, n_jobs=-1)
     
     print("Training...")
     model.fit(X_train, y_train)
@@ -48,7 +48,7 @@ cols_to_clean = [
 
 weather = utils.remove_outliers(weather, cols_to_clean)
 
-model, X_val, X_test, y_val, y_test = trainLevel1(weather, seed=13, estimators=100)
+model, X_val, X_test, y_val, y_test = trainLevel1(weather, seed=13, estimators=200)
 
 
 joblib.dump(model, 'finalModelLevel1.pkl')
