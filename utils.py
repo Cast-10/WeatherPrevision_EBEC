@@ -6,7 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
 
-def remove_outliers(df, columns, k=3):
+def remove_outliers(df, columns, k=7):
     mask = pd.Series(True, index=df.index)
     for col in columns:
         mean, std = df[col].mean(), df[col].std()
