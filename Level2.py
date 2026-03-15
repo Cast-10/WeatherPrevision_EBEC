@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 import pandas as pd
 import utils
+import joblib
 
 weather = pd.read_csv("metherology_dataset.csv")
 
@@ -47,7 +48,7 @@ def trainLevel2(df):
     
     print("Training...")
     model.fit(X_train, y_train)
-    print("Finnished train.")
+    print("Finnished training.")
     
     return model, X_val, X_test, y_val, y_test
 
@@ -69,7 +70,12 @@ weather_cleaned = utils.remove_outliers(weather_cleaned, important_sensor_cols)
 
 model, X_val, X_test, y_val, y_test = trainLevel2(weather_cleaned)
 
-y_pred_val = model.predict(X_val)
+joblib.dump(model, 'finalModelLevel2.pkl')
+
+model_loaded = joblib.load('finalModelLevel2.pkl')
+
+y_pred_val = model_loaded.predict(X_val)
+
 print(f"\n===== Level 2 Forecasting Evaluation =====")
 print(f"MAE: {mean_absolute_error(y_val, y_pred_val):.4f} °C")
 print(f"R² Score: {r2_score(y_val, y_pred_val):.4f}")

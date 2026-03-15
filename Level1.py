@@ -20,7 +20,7 @@ def trainLevel1(df, seed, estimators=100):
     
     print("Training...")
     model.fit(X_train, y_train)
-    print("Finnished train.")
+    print("Finnished training.")
     
     return model, X_val, X_test, y_val, y_test
 

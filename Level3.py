@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import utils
 
+
 weather = pd.read_csv("metherology_dataset.csv")
 
 def trainLevel3(df):
@@ -16,7 +17,6 @@ def trainLevel3(df):
     # We create "Dew Point Depression" - the closer this is to 0, the more likely precipitation.
     
     # We select the physical features that define "Snowy" conditions
-
     df['cloud_density'] = df['cloud_cover_low'] + df['cloud_cover_mid']
     
     # 2. Wind Turbulence (Gustiness often accompanies fronts)
