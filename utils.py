@@ -51,14 +51,14 @@ def setUp(df):
     df = df.drop(columns=['time'], errors='ignore')
     return df
 
-def train_validate_test_split(X, y, val_size=0.15, test_size=0.15, randomState=42):
+def train_validate_test_split(X, y, val_size=0.15, test_size=0.15):
     temp_size = val_size + test_size
     X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=temp_size, random_state=randomState
+        X, y, test_size=temp_size, shuffle=False
     )
     relative_test_size = test_size / temp_size  # e.g. 0.15/0.30 = 0.50
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=relative_test_size, random_state=randomState
+        X_temp, y_temp, test_size=relative_test_size, shuffle=False
     )
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -75,11 +75,4 @@ def print_f1_score(y_true, y_pred, dataset_name="Validation"):
     
     print(f"===== {dataset_name} Evaluation =====")
     print(f"F1 Score: {f1:.4f}")
-    print()
-    print("Full Report:")
-    print(classification_report(y_true, y_pred, target_names=["No Rain", "Rain"]))
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_true, y_pred))
-    print("  [TN  FP]")
-    print("  [FN  TP]")
     print("=====================================\n")

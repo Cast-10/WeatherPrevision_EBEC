@@ -14,7 +14,7 @@ def trainLevel1(df, seed, estimators=100):
     X = df.drop(columns=['isRaining'])
     y = df['isRaining']
     
-    X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X,y, randomState=seed)
+    X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X,y)
     
     model = RandomForestClassifier(n_estimators=estimators, random_state=seed)
     

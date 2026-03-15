@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 import pandas as pd
@@ -43,11 +42,9 @@ def trainLevel2(df):
     
     seed = 42
     # Regression split (no stratification)
-    X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(
-        X, y, randomState=seed
-    )
+    X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X, y)
     
-    model = RandomForestRegressor(n_estimators=250, max_depth=15, random_state=seed, n_jobs=-1)
+    model = RandomForestRegressor(n_estimators=250, max_depth=15, n_jobs=-1)
     
     print("Training...")
     model.fit(X_train, y_train)
