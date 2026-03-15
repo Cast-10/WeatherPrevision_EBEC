@@ -5,7 +5,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
-import random
 import utils
 import joblib
 
@@ -28,23 +27,33 @@ def trainLevel1(df, seed, estimators=100):
 weather = utils.setUp(weather)
 weather['isRaining'] = (weather['rain'] > 0).astype(int)
 
+# 1. Define all features for the model
 features = [
-    'location',             
-    'month',                
-    'hour',                  
-    'relative_humidity_2m',  
-    'dew_point_2m',         
-    'pressure_msl',          
-    'cloud_cover',           
-    'cloud_cover_low',       
-    'wind_speed_10m',        
-    'wind_direction_10m' 
+    'location', 'month_sin', 'month_cos', 'day_sin', 'day_cos',
+    'hour_sin', 'hour_cos', 'relative_humidity_2m', 'dew_point_2m',
+    'pressure_msl', 'cloud_cover', 'cloud_cover_low',
+    'wind_speed_10m', 'wind_direction_10m'
 ]
 
 weather = weather[features + ['isRaining']]
-weather = utils.remove_outliers(weather, features)
+
+# 2. Define ONLY the columns that might have sensor glitches
+# We EXCLUDE location, sin, and cos columns here
+cols_to_clean = [
+    'relative_humidity_2m', 
+    'dew_point_2m', 
+    'pressure_msl', 
+    'wind_speed_10m'
+]
+
+weather = utils.remove_outliers(weather, cols_to_clean)
 
 model, X_val, X_test, y_val, y_test = trainLevel1(weather, seed=13, estimators=100)
-y_pred_val = model.predict(X_val)
-current_f1 = utils.print_f1_score(y_val, y_pred_val)
+
+
 joblib.dump(model, 'finalModelLevel1.pkl')
+
+model_loaded = joblib.load('finalModelLevel1.pkl')
+
+y_pred_val = model_loaded.predict(X_val)
+current_f1 = utils.print_f1_score(y_val, y_pred_val)
