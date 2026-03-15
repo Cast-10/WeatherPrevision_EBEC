@@ -19,7 +19,6 @@ def trainLevel2(df):
     
     # LAGS: Give the model 'memory'
     df['temp_lag_1h'] = df.groupby('location')['temperature_2m'].shift(1)
-    df['temp_lag_2h'] = df.groupby('location')['temperature_2m'].shift(2)
     df['temp_lag_24h'] = df.groupby('location')['temperature_2m'].shift(24)
     
     # TRENDS: How are things changing?
