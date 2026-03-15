@@ -1,12 +1,9 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import utils
 
-def Level3(df):
+def addSnowIndicator(df):
     df = df.copy()
     df = utils.setUp(df)
     

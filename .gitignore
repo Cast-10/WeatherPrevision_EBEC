@@ -1,7 +1,11 @@
-
 __pycache__/
 *.pyc
 .venv/
+venv/
 .gitignore
-finalModelLevel2.pkl
-
+*.pkl
+*.pkl
+venv/
+.venv/
+*.pkl
+__pycache__/
