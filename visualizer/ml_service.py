@@ -7,6 +7,7 @@ import utils
 from visualizer.ml_day_result import MLDayResult
 from visualizer.ml_hour_result import MLHourResult
 from visualizer.accident_forecast_result import AccidentForecastResult
+from visualizer.meteorology_forecast_result import MeteorologyForecastResult
 
 
 class MLService:
@@ -15,12 +16,18 @@ class MLService:
         df: pd.DataFrame,
         accidents_df: pd.DataFrame = None,
         temperature_model=None,
-        level4_model=None
+        level4_model=None,
+        level5_model=None,
+        level5_labels=None,
+        level5_features=None
     ):
         self.df = df.copy()
         self.accidents_df = accidents_df.copy() if accidents_df is not None else None
         self.temperature_model = temperature_model
         self.level4_model = level4_model
+        self.level5_model = level5_model
+        self.level5_labels = level5_labels if level5_labels is not None else []
+        self.level5_features = level5_features if level5_features is not None else []
 
         self.location_map = {
             "Aveiro": 1, "Beja": 2, "Braga": 3, "Bragança": 4, "Castelo Branco": 5,
@@ -178,6 +185,94 @@ class MLService:
 
         return pd.DataFrame([row])
 
+    def _build_level5_feature_row(self, location: str, selected_day):
+        if self.level5_model is None or not self.level5_features:
+            return None
+
+        location_df = self.df[self.df["location"] == location].copy()
+        if location_df.empty:
+            return None
+
+        location_df["time"] = pd.to_datetime(location_df["time"])
+        location_df = location_df.sort_values("time").reset_index(drop=True)
+
+        base_time = pd.to_datetime(selected_day) - pd.Timedelta(hours=1)
+
+        history = location_df[location_df["time"] <= base_time].copy()
+        if history.empty:
+            return None
+
+        prepared = utils.setUp(history.copy())
+        prepared["time"] = history["time"].values
+        prepared = prepared.sort_values("time").reset_index(drop=True)
+
+        if len(prepared) < 25:
+            return None
+
+        current = prepared.iloc[-1]
+        time_features = self._encode_time_features(pd.to_datetime(base_time))
+
+        row = {}
+
+        for feature in self.level5_features:
+            if feature == "location":
+                row[feature] = self.location_map.get(location, location)
+
+            elif feature in prepared.columns:
+                row[feature] = current[feature]
+
+            elif feature == "hour_sin":
+                row[feature] = time_features["hour_sin"]
+            elif feature == "hour_cos":
+                row[feature] = time_features["hour_cos"]
+            elif feature == "day_sin":
+                row[feature] = time_features["day_sin"]
+            elif feature == "day_cos":
+                row[feature] = time_features["day_cos"]
+            elif feature == "month_sin":
+                row[feature] = time_features["month_sin"]
+            elif feature == "month_cos":
+                row[feature] = time_features["month_cos"]
+
+            elif feature.endswith("_lag_1h"):
+                base_col = feature.replace("_lag_1h", "")
+                row[feature] = prepared.iloc[-2][base_col] if base_col in prepared.columns and len(prepared) >= 2 else 0.0
+
+            elif feature.endswith("_lag_3h"):
+                base_col = feature.replace("_lag_3h", "")
+                row[feature] = prepared.iloc[-4][base_col] if base_col in prepared.columns and len(prepared) >= 4 else 0.0
+
+            elif feature.endswith("_lag_6h"):
+                base_col = feature.replace("_lag_6h", "")
+                row[feature] = prepared.iloc[-7][base_col] if base_col in prepared.columns and len(prepared) >= 7 else 0.0
+
+            elif feature.endswith("_lag_12h"):
+                base_col = feature.replace("_lag_12h", "")
+                row[feature] = prepared.iloc[-13][base_col] if base_col in prepared.columns and len(prepared) >= 13 else 0.0
+
+            elif feature.endswith("_lag_24h"):
+                base_col = feature.replace("_lag_24h", "")
+                row[feature] = prepared.iloc[-25][base_col] if base_col in prepared.columns and len(prepared) >= 25 else 0.0
+
+            elif feature.endswith("_roll_mean_6h"):
+                base_col = feature.replace("_roll_mean_6h", "")
+                if base_col in prepared.columns and len(prepared) >= 7:
+                    row[feature] = prepared[base_col].iloc[-7:-1].mean()
+                else:
+                    row[feature] = 0.0
+
+            elif feature.endswith("_roll_mean_24h"):
+                base_col = feature.replace("_roll_mean_24h", "")
+                if base_col in prepared.columns and len(prepared) >= 25:
+                    row[feature] = prepared[base_col].iloc[-25:-1].mean()
+                else:
+                    row[feature] = 0.0
+
+            else:
+                row[feature] = 0.0
+
+        return pd.DataFrame([row])[self.level5_features]
+
     def _build_feature_row(self, history_df: pd.DataFrame):
         history_df = history_df.copy().sort_values("time").reset_index(drop=True)
 
@@ -279,9 +374,167 @@ class MLService:
 
         snow_df = self._add_snow_indicator(processed_df)
         return snow_df
+    def _predict_level5_from_history(self, location: str, history_df: pd.DataFrame, target_day):
+        if self.level5_model is None or not self.level5_features:
+            return {}
+
+        prepared = utils.setUp(history_df.copy())
+        prepared["time"] = pd.to_datetime(history_df["time"]).values
+        prepared = prepared.sort_values("time").reset_index(drop=True)
+
+        if len(prepared) < 25:
+            return {}
+
+        base_time = pd.to_datetime(target_day) - pd.Timedelta(hours=1)
+        time_features = self._encode_time_features(base_time)
+
+        current = prepared.iloc[-1]
+        row = {}
+
+        for feature in self.level5_features:
+            if feature == "location":
+                row[feature] = self.location_map.get(location, location)
+
+            elif feature in prepared.columns:
+                row[feature] = current[feature]
+
+            elif feature == "hour_sin":
+                row[feature] = time_features["hour_sin"]
+            elif feature == "hour_cos":
+                row[feature] = time_features["hour_cos"]
+            elif feature == "day_sin":
+                row[feature] = time_features["day_sin"]
+            elif feature == "day_cos":
+                row[feature] = time_features["day_cos"]
+            elif feature == "month_sin":
+                row[feature] = time_features["month_sin"]
+            elif feature == "month_cos":
+                row[feature] = time_features["month_cos"]
+
+            elif feature.endswith("_lag_1h"):
+                base_col = feature.replace("_lag_1h", "")
+                row[feature] = prepared.iloc[-2][base_col] if base_col in prepared.columns and len(prepared) >= 2 else 0.0
+
+            elif feature.endswith("_lag_3h"):
+                base_col = feature.replace("_lag_3h", "")
+                row[feature] = prepared.iloc[-4][base_col] if base_col in prepared.columns and len(prepared) >= 4 else 0.0
+
+            elif feature.endswith("_lag_6h"):
+                base_col = feature.replace("_lag_6h", "")
+                row[feature] = prepared.iloc[-7][base_col] if base_col in prepared.columns and len(prepared) >= 7 else 0.0
+
+            elif feature.endswith("_lag_12h"):
+                base_col = feature.replace("_lag_12h", "")
+                row[feature] = prepared.iloc[-13][base_col] if base_col in prepared.columns and len(prepared) >= 13 else 0.0
+
+            elif feature.endswith("_lag_24h"):
+                base_col = feature.replace("_lag_24h", "")
+                row[feature] = prepared.iloc[-25][base_col] if base_col in prepared.columns and len(prepared) >= 25 else 0.0
+
+            elif feature.endswith("_roll_mean_6h"):
+                base_col = feature.replace("_roll_mean_6h", "")
+                if base_col in prepared.columns and len(prepared) >= 7:
+                    row[feature] = prepared[base_col].iloc[-7:-1].mean()
+                else:
+                    row[feature] = 0.0
+
+            elif feature.endswith("_roll_mean_24h"):
+                base_col = feature.replace("_roll_mean_24h", "")
+                if base_col in prepared.columns and len(prepared) >= 25:
+                    row[feature] = prepared[base_col].iloc[-25:-1].mean()
+                else:
+                    row[feature] = 0.0
+
+            else:
+                row[feature] = 0.0
+
+        X = pd.DataFrame([row])[self.level5_features]
+        preds = self.level5_model.predict(X)[0]
+
+        predictions = {}
+        for i, label in enumerate(self.level5_labels):
+            value = float(preds[i])
+
+            if label == "rain":
+                value = max(0.0, value)
+            elif label == "relative_humidity_2m":
+                value = min(100.0, max(0.0, value))
+            elif label == "wind_speed_10m":
+                value = max(0.0, value)
+
+            predictions[label] = value
+
+        return predictions
+    
+    def _build_recursive_future_history(self, location: str, selected_day):
+        location_df = self.df[self.df["location"] == location].copy()
+
+        if location_df.empty:
+            return None, {}
+
+        location_df["time"] = pd.to_datetime(location_df["time"])
+        location_df = location_df.sort_values("time").reset_index(drop=True)
+
+        history = location_df.copy()
+        target_day = pd.to_datetime(selected_day).date()
+
+        daily_forecasts = {}
+
+        while True:
+            last_time = pd.to_datetime(history.iloc[-1]["time"])
+
+            if last_time.date() > target_day:
+                break
+            if last_time.date() == target_day and last_time.hour == 23:
+                break
+
+            next_time = last_time + pd.Timedelta(hours=1)
+            next_day = next_time.date()
+
+            if next_day not in daily_forecasts:
+                day_predictions = self._predict_level5_from_history(location, history, next_day)
+                daily_forecasts[next_day] = day_predictions
+
+            day_predictions = daily_forecasts.get(next_day, {})
+
+            X_next = self._build_feature_row(history)
+            if X_next is None:
+                return None, daily_forecasts
+
+            predicted_temp = float(self.temperature_model.predict(X_next)[0]) if self.temperature_model is not None else None
+
+            predicted_rain = max(0.0, float(day_predictions.get("rain", 0.0)))
+            predicted_wind = max(0.0, float(day_predictions.get("wind_speed_10m", 0.0)))
+            predicted_humidity = day_predictions.get("relative_humidity_2m", None)
+
+            if predicted_rain <= 0.2:
+                hourly_rain = 0.0
+            else:
+                hourly_rain = predicted_rain / 24.0
+
+            last_row = history.iloc[-1].copy()
+            new_row = last_row.copy()
+
+            new_row["time"] = next_time
+            new_row["temperature_2m"] = predicted_temp if predicted_temp is not None else last_row["temperature_2m"]
+
+            if "wind_speed_10m" in new_row.index:
+                new_row["wind_speed_10m"] = predicted_wind
+            if "wind_gusts_10m" in new_row.index:
+                new_row["wind_gusts_10m"] = max(predicted_wind, predicted_wind * 1.15)
+            if "relative_humidity_2m" in new_row.index and predicted_humidity is not None:
+                new_row["relative_humidity_2m"] = predicted_humidity
+            if "rain" in new_row.index:
+                new_row["rain"] = hourly_rain
+
+            history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
+
+        return history, daily_forecasts
 
     def _build_future_hour_results(self, location: str, selected_day):
-        if self.temperature_model is None:
+        history, daily_forecasts = self._build_recursive_future_history(location, selected_day)
+
+        if history is None:
             return [
                 MLHourResult(
                     hour=hour,
@@ -295,40 +548,16 @@ class MLService:
                 for hour in range(24)
             ]
 
-        location_df = self.df[self.df["location"] == location].copy()
-
-        if location_df.empty:
-            return []
-
-        location_df = location_df.sort_values("time").reset_index(drop=True)
         target_day = pd.to_datetime(selected_day).date()
-        history = location_df.copy()
-
-        while True:
-            last_time = pd.to_datetime(history.iloc[-1]["time"])
-
-            if last_time.date() > target_day:
-                break
-            if last_time.date() == target_day and last_time.hour == 23:
-                break
-
-            X_next = self._build_feature_row(history)
-            if X_next is None:
-                return []
-
-            predicted_temp = float(self.temperature_model.predict(X_next)[0])
-
-            last_row = history.iloc[-1].copy()
-            new_time = pd.to_datetime(last_row["time"]) + pd.Timedelta(hours=1)
-
-            new_row = last_row.copy()
-            new_row["time"] = new_time
-            new_row["temperature_2m"] = predicted_temp
-
-            history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
 
         selected_rows = history[pd.to_datetime(history["time"]).dt.date == target_day].copy()
         selected_rows = selected_rows.sort_values("time")
+
+        if selected_rows.empty:
+            return []
+
+        day_predictions = daily_forecasts.get(target_day, {})
+        daily_humidity = day_predictions.get("relative_humidity_2m", None)
 
         hour_results = []
         for _, row in selected_rows.iterrows():
@@ -336,9 +565,9 @@ class MLService:
                 MLHourResult(
                     hour=int(pd.to_datetime(row["time"]).hour),
                     temperature=float(row["temperature_2m"]) if pd.notna(row["temperature_2m"]) else None,
-                    rain=None,
-                    humidity=None,
-                    wind=None,
+                    rain=float(row["rain"]) if "rain" in row and pd.notna(row["rain"]) else 0.0,
+                    humidity=float(daily_humidity) if daily_humidity is not None else None,
+                    wind=float(row["wind_speed_10m"]) if "wind_speed_10m" in row and pd.notna(row["wind_speed_10m"]) else 0.0,
                     pressure=None,
                     snow_detected=None
                 )
@@ -404,7 +633,7 @@ class MLService:
             actual_accidents=actual_accidents,
             actual_vehicles=actual_vehicles
         )
-        
+
     def _build_future_accident_result(self, location: str, selected_day):
         if self.level4_model is None:
             return AccidentForecastResult(
@@ -435,6 +664,17 @@ class MLService:
 
         return self._build_historical_accident_result(location, selected_day)
 
+    def _build_meteorology_forecast(self, location: str, selected_day):
+        if not self.is_future_day(selected_day):
+            return MeteorologyForecastResult()
+
+        _, daily_forecasts = self._build_recursive_future_history(location, selected_day)
+
+        selected_day = pd.to_datetime(selected_day).date()
+        predictions = daily_forecasts.get(selected_day, {})
+
+        return MeteorologyForecastResult(predictions=predictions)
+
     def build_hour_results(self, location: str, selected_day):
         if self.is_future_day(selected_day):
             return self._build_future_hour_results(location, selected_day)
@@ -445,11 +685,13 @@ class MLService:
         is_future = self.is_future_day(selected_day)
         hour_results = self.build_hour_results(location, selected_day)
         accident_forecast = self._build_accident_forecast(location, selected_day)
+        meteorology_forecast = self._build_meteorology_forecast(location, selected_day)
 
         return MLDayResult(
             location=location,
             selected_day=selected_day,
             is_future=is_future,
             hour_results=hour_results,
-            accident_forecast=accident_forecast
+            accident_forecast=accident_forecast,
+            meteorology_forecast=meteorology_forecast
         )
