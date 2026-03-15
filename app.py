@@ -1,4 +1,5 @@
 import streamlit as st
+import joblib
 
 from visualizer.data_loader import DataLoader
 from visualizer.weather_service import WeatherService
@@ -16,9 +17,12 @@ st.set_page_config(page_title="Weather Interface", layout="wide")
 loader = DataLoader("metherology_dataset.csv")
 df = loader.load_data()
 
+# Load trained temperature model
+temperature_model = joblib.load("finalModelLevel2.pkl")
+
 # Create services
 weather_service = WeatherService(df)
-ml_service = MLService(df)
+ml_service = MLService(df, temperature_model=temperature_model)
 
 # Create UI helpers
 future_panel = FuturePredictionPanel()

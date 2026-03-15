@@ -3,49 +3,108 @@ import streamlit as st
 
 class FuturePredictionPanel:
     def __init__(self):
-        # This class only displays future prediction results
         pass
 
+    def _get_weather_icon(self, rain_value: float, hour_value: int, is_snow: bool = False) -> str:
+        if is_snow:
+            return "❄️"
+
+        if rain_value >= 1.0:
+            return "🌧️"
+
+        if hour_value >= 20 or hour_value < 6:
+            return "🌙"
+
+        return "☀️"
+
     def render(self, ml_result):
-        # Only show this panel for future days
         if ml_result is None or not ml_result.is_future_day():
             return
+
+        hour_results = ml_result.get_hour_results()
 
         st.markdown(
             "<h3 style='color:#0f172a; font-weight:700;'>Future Forecast (ML Prediction)</h3>",
             unsafe_allow_html=True
         )
 
-        col1, col2, col3, col4, col5 = st.columns(5)
+        if not hour_results:
+            st.info("No hourly future forecast is available yet.")
+            return
 
-        def render_card(title, value, unit, col):
-            shown_value = 0.0 if value is None else value
+        st.markdown(
+            f"<h4 style='color:#0f172a; font-weight:600;'>Hourly forecast for {ml_result.location} on {ml_result.selected_day}</h4>",
+            unsafe_allow_html=True
+        )
 
-            with col:
-                st.markdown(f"""
-                    <div style="
-                        background: white;
-                        border: 1px solid #dbe6f3;
-                        border-radius: 18px;
-                        padding: 18px 14px;
-                        text-align: center;
-                        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-                        min-height: 120px;
-                    ">
-                        <div style="font-size:14px; font-weight:600; color:#334155; margin-bottom:10px;">
-                            {title}
-                        </div>
-                        <div style="font-size:30px; font-weight:700; color:#0f172a; margin-bottom:8px;">
-                            {shown_value:.1f}
-                        </div>
-                        <div style="font-size:13px; color:#475569;">
-                            {unit}
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+        st.markdown("""
+            <style>
+                .hour-card {
+                    background: white;
+                    border: 1px solid #dbe6f3;
+                    border-radius: 16px;
+                    padding: 14px 10px;
+                    text-align: center;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                    min-height: 170px;
+                    margin-bottom: 12px;
+                }
 
-        render_card("Predicted Temp", ml_result.get_temperature(), "°C", col1)
-        render_card("Predicted Rain", ml_result.get_rain(), "mm", col2)
-        render_card("Predicted Humidity", ml_result.get_humidity(), "%", col3)
-        render_card("Predicted Wind", ml_result.get_wind(), "km/h", col4)
-        render_card("Predicted Pressure", ml_result.get_pressure(), "hPa", col5)
+                .hour-time {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin-bottom: 6px;
+                }
+
+                .hour-icon {
+                    font-size: 28px;
+                    margin-bottom: 6px;
+                }
+
+                .hour-temp {
+                    font-size: 24px;
+                    font-weight: 700;
+                    color: #16325c;
+                    margin-bottom: 10px;
+                }
+
+                .hour-detail {
+                    font-size: 13px;
+                    color: #1f2937;
+                    margin-bottom: 4px;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
+        for start in range(0, len(hour_results), 6):
+            row_data = hour_results[start:start + 6]
+            cols = st.columns(6)
+
+            for col, hour_result in zip(cols, row_data):
+                hour = hour_result.get_hour()
+                temperature = hour_result.get_temperature()
+                rain = hour_result.get_rain()
+                wind = hour_result.get_wind()
+                snow_detected = hour_result.get_snow_detected()
+
+                shown_temp = 0.0 if temperature is None else temperature
+                shown_rain = 0.0 if rain is None else rain
+                shown_wind = 0.0 if wind is None else wind
+
+                icon = self._get_weather_icon(
+                    shown_rain,
+                    hour,
+                    is_snow=(snow_detected is True)
+                )
+
+                with col:
+                    st.markdown(f"""
+                        <div class="hour-card">
+                            <div class="hour-time">{hour:02d}:00</div>
+                            <div class="hour-icon">{icon}</div>
+                            <div class="hour-temp">{shown_temp:.1f}°C</div>
+                            <div class="hour-detail">Rain: {shown_rain:.1f} mm</div>
+                            <div class="hour-detail">Wind: {shown_wind:.1f} km/h</div>
+                        </div>
+                    """, unsafe_allow_html=True)
