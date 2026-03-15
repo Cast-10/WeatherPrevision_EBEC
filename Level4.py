@@ -5,23 +5,31 @@ import utils
 import Level3 as l3
 
 def trainLevel4(df):
-    # E nas features do trainLevel4:
+    
+    # Separate Train and Validation before mean so we don't fall in Data Leakage
+    train_size = int(len(df) * 0.7)
+    df_train = df.iloc[:train_size].copy()
+    
+    # Accident mean by location based only on train
+    loc_avg_map = df_train.groupby('location')['accidents'].mean().to_dict()
+    df['location_avg'] = df['location'].map(loc_avg_map).fillna(df_train['accidents'].mean())
+    
+    df['is_peak_traffic'] = df['day_of_week'].isin([1, 2, 3]).astype(int)
+    
     features = [
-        'location', 'location_avg', 
-        'day_of_week', 'is_weekend', 'is_snowing',
+        'location', 'location_avg',
+        'day_of_week', 'is_weekend', 'is_snowing', 'is_peak_traffic',
         'day_sin', 'day_cos', 'month_sin', 'month_cos',
-        'temperature_2m', 'rain', 'wind_gusts_10m', 'relative_humidity_2m'
+        'temperature_2m', 'rain', 
+        'wind_gusts_10m', 'relative_humidity_2m'
     ]
     
     X = df[features]
     y = df['accidents'] * 3
     
-    # Split Temporal (Não usamos shuffle para manter a lógica de tempo)
     X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X, y)
     
-    # Modelo Regressor (Previsão de números, não classes)
-    # Usamos criterion='absolute_error' porque a métrica da Brisa é baseada em erro absoluto
-    model = RandomForestRegressor(n_estimators=200, criterion='absolute_error', random_state=42, n_jobs=-1)
+    model = RandomForestRegressor(n_estimators=300,max_depth=10, min_samples_leaf=15, criterion='absolute_error', random_state=42, n_jobs=-1)
     
     print("Training...")
     model.fit(X_train, y_train)
@@ -67,8 +75,5 @@ df_final = pd.merge(
     on=['location', 'day_sin', 'day_cos', 'month_sin', 'month_cos'], 
     how='inner'
 )
-
-# 1. Média por Localização
-df_final['location_avg'] = df_final.groupby('location')['accidents'].transform('mean')
 
 model, avg_error = trainLevel4(df_final)
