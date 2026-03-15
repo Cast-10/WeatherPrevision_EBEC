@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error
 import utils
 import joblib
@@ -77,6 +78,7 @@ def prepare_level4_data(weather_raw, accidents_raw):
 # --- TRAINING ---
 def trainLevel4(X, y):
     # Using absolute_error to align with the "Vehicle Error" metric
+    """
     model = RandomForestRegressor(
         n_estimators=300,
         max_depth=10, 
@@ -85,6 +87,17 @@ def trainLevel4(X, y):
         random_state=42, 
         n_jobs=-1
     )
+    """
+    model = HistGradientBoostingRegressor(
+    loss='absolute_error', 
+    learning_rate=0.05,        # Learning speed (shorter step bigger precision)
+    max_iter=400,              # Similar to n_estimators
+    max_depth=8,              
+    l2_regularization=2.0,     # Helps generelization
+    min_samples_leaf=20,   
+    monotonic_cst=[1 if i in [7, 10] else 0 for i in range(X.shape[1])], # Optional: forces positive relation with rain/clouds
+    random_state=13
+)
     
     print("Training Level 4 (Brisa Logistics)...")
     model.fit(X, y)
