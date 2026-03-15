@@ -1,13 +1,16 @@
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import StandardScaler
+import utils
 
 from visualizer.ml_day_result import MLDayResult
 from visualizer.ml_hour_result import MLHourResult
+from visualizer.accident_forecast_result import AccidentForecastResult
 
 
 class MLService:
     def __init__(self, df: pd.DataFrame, temperature_model=None):
-        # Save raw dataset and optional trained temperature model
         self.df = df.copy()
         self.temperature_model = temperature_model
 
@@ -17,6 +20,8 @@ class MLService:
             "Lisboa": 11, "Portalegre": 12, "Porto": 13, "Santarém": 14,
             "Setúbal": 15, "Viana do Castelo": 16, "Vila Real": 17, "Viseu": 18
         }
+
+        self.snow_df = self._build_snow_dataframe()
 
     def get_last_available_day(self):
         return self.df["time"].dt.date.max()
@@ -78,7 +83,69 @@ class MLService:
 
         return pd.DataFrame([feature_row])
 
-    def build_hour_results(self, location: str, selected_day):
+    def _add_snow_indicator(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+
+        df["cloud_density"] = df["cloud_cover_low"] + df["cloud_cover_mid"]
+        df["wind_turbulence"] = df["wind_gusts_10m"] - df["wind_speed_10m"]
+        df["topo_gap"] = df["pressure_msl"] - df["surface_pressure"]
+
+        features_to_use = [
+            "temperature_2m",
+            "dew_point_2m",
+            "relative_humidity_2m",
+            "cloud_density",
+            "wind_turbulence",
+            "topo_gap",
+            "surface_pressure"
+        ]
+
+        X = df[features_to_use]
+
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        model = IsolationForest(contamination=0.01, random_state=42, n_jobs=-1)
+
+        df["is_anomaly"] = model.fit_predict(X_scaled)
+
+        df["detected_snow"] = (
+            (df["is_anomaly"] == -1) &
+            (df["temperature_2m"] < 2.5) &
+            (df["cloud_density"] > 100)
+        ).astype(int)
+
+        return df
+
+    def _build_snow_dataframe(self) -> pd.DataFrame:
+        raw_df = self.df.copy()
+        raw_df["time"] = pd.to_datetime(raw_df["time"])
+
+        raw_time = raw_df["time"].copy()
+        raw_location = raw_df["location"].copy()
+
+        processed_df = utils.setUp(raw_df.copy())
+
+        important_sensor_cols = [
+            "temperature_2m",
+            "dew_point_2m",
+            "relative_humidity_2m",
+            "surface_pressure",
+            "cloud_cover_mid",
+            "cloud_cover_low",
+            "wind_gusts_10m",
+            "wind_speed_10m"
+        ]
+
+        processed_df = utils.remove_outliers(processed_df, important_sensor_cols)
+
+        processed_df["time"] = raw_time.loc[processed_df.index]
+        processed_df["location_name"] = raw_location.loc[processed_df.index]
+
+        snow_df = self._add_snow_indicator(processed_df)
+        return snow_df
+
+    def _build_future_hour_results(self, location: str, selected_day):
         if self.temperature_model is None:
             return [
                 MLHourResult(
@@ -144,13 +211,96 @@ class MLService:
 
         return hour_results
 
+    def _build_historical_hour_results(self, location: str, selected_day):
+        snow_df = self.snow_df.copy()
+        snow_df["time"] = pd.to_datetime(snow_df["time"])
+
+        day_rows = snow_df[
+            (snow_df["location_name"] == location) &
+            (snow_df["time"].dt.date == selected_day)
+        ].copy()
+
+        day_rows = day_rows.sort_values("time")
+
+        if day_rows.empty:
+            return []
+
+        hour_results = []
+        for _, row in day_rows.iterrows():
+            hour_results.append(
+                MLHourResult(
+                    hour=int(pd.to_datetime(row["time"]).hour),
+                    temperature=None,
+                    rain=None,
+                    humidity=None,
+                    wind=None,
+                    pressure=None,
+                    snow_detected=bool(row["detected_snow"]) if pd.notna(row["detected_snow"]) else None
+                )
+            )
+
+        return hour_results
+
+    def _build_historical_accident_result(self, location: str, selected_day):
+        day_rows = self.df[
+            (self.df["location"] == location) &
+            (pd.to_datetime(self.df["time"]).dt.date == selected_day)
+        ].copy()
+
+        if day_rows.empty:
+            return AccidentForecastResult(
+                predicted_accidents=None,
+                predicted_vehicles=None
+            )
+
+        # ALTERAR ESTES NOMES PARA AS COLUNAS REAIS DO TEU DATASET
+        accidents_column = "accidents"
+        vehicles_column = "vehicles_needed"
+
+        actual_accidents = 0
+        actual_vehicles = 0
+
+        if accidents_column in day_rows.columns:
+            actual_accidents = int(day_rows[accidents_column].sum())
+
+        if vehicles_column in day_rows.columns:
+            actual_vehicles = int(day_rows[vehicles_column].sum())
+
+        return AccidentForecastResult(
+            predicted_accidents=actual_accidents,
+            predicted_vehicles=actual_vehicles
+        )
+
+    def _build_future_accident_result(self, location: str, selected_day):
+        predicted_accidents = None
+        predicted_vehicles = 0 if predicted_accidents is None else 3 * predicted_accidents
+
+        return AccidentForecastResult(
+            predicted_accidents=predicted_accidents,
+            predicted_vehicles=predicted_vehicles
+        )
+
+    def _build_accident_forecast(self, location: str, selected_day):
+        if self.is_future_day(selected_day):
+            return self._build_future_accident_result(location, selected_day)
+
+        return self._build_historical_accident_result(location, selected_day)
+
+    def build_hour_results(self, location: str, selected_day):
+        if self.is_future_day(selected_day):
+            return self._build_future_hour_results(location, selected_day)
+
+        return self._build_historical_hour_results(location, selected_day)
+
     def build_result(self, location: str, selected_day) -> MLDayResult:
         is_future = self.is_future_day(selected_day)
         hour_results = self.build_hour_results(location, selected_day)
+        accident_forecast = self._build_accident_forecast(location, selected_day)
 
         return MLDayResult(
             location=location,
             selected_day=selected_day,
             is_future=is_future,
-            hour_results=hour_results
+            hour_results=hour_results,
+            accident_forecast=accident_forecast
         )

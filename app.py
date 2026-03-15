@@ -9,50 +9,45 @@ from visualizer.hourly_weather_timeline import HourlyWeatherTimeline
 from visualizer.app_styler import AppStyler
 from visualizer.main_page import MainPage
 from visualizer.future_prediction_panel import FuturePredictionPanel
+from visualizer.accident_forecast_panel import AccidentForecastPanel
 from visualizer.ml_service import MLService
 
 st.set_page_config(page_title="Weather Interface", layout="wide")
 
-# Load the dataset
 loader = DataLoader("metherology_dataset.csv")
 df = loader.load_data()
 
-# Load trained temperature model
 temperature_model = joblib.load("finalModelLevel2.pkl")
 
-# Create services
 weather_service = WeatherService(df)
 ml_service = MLService(df, temperature_model=temperature_model)
 
-# Create UI helpers
 future_panel = FuturePredictionPanel()
+accident_panel = AccidentForecastPanel()
+
 styler = AppStyler(
     title="Weather Forecast Interface",
     subtitle="Explore hourly weather conditions and future forecasts by district across Portugal"
 )
 main_page = MainPage()
 
-# Apply visual style
 styler.apply_styles()
 styler.render_header()
-
-# Render main page intro
 main_page.render_intro()
 
-# Render selector section
 styler.open_selector_box()
 selector = WeatherSelector(weather_service, future_days=7)
 selected_location, selected_day = selector.render()
 styler.close_box()
 
-# Build ML result only after both values are selected
 ml_result = None
 if selected_location is not None and selected_day is not None:
     ml_result = ml_service.build_result(selected_location, selected_day)
 
-# Render content only after full selection
-if selected_location is not None and selected_day is not None:
-    if ml_result is not None and ml_result.is_future_day():
+if selected_location is not None and selected_day is not None and ml_result is not None:
+    accident_panel.render(ml_result)
+
+    if ml_result.is_future_day():
         future_panel.render(ml_result)
     else:
         summary = WeatherSummaryCards(weather_service)

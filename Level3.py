@@ -6,11 +6,9 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import utils
 
-
-weather = pd.read_csv("metherology_dataset.csv")
-
-def addSnowIndicator(df):
+def Level3(df):
     df = df.copy()
+    df = utils.setUp(df)
     
     # --- 1. Feature Engineering for Snow ---
     # Snow is defined by the relationship between Temp, Dew Point, and Humidity.
@@ -25,14 +23,26 @@ def addSnowIndicator(df):
     # 3. Pressure Gap (Proxy for elevation/terrain)
     df['topo_gap'] = df['pressure_msl'] - df['surface_pressure']
 
+    important_sensor_cols = [
+        'temperature_2m', 
+        'dew_point_2m', 
+        'relative_humidity_2m',
+        'surface_pressure',
+        'cloud_cover_mid',
+        'cloud_cover_low',
+        'wind_gusts_10m',
+        'wind_speed_10m'
+    ]
+
+    df = utils.remove_outliers(df, important_sensor_cols)
 
     features_to_use = [
         'temperature_2m', 
         'dew_point_2m', 
         'relative_humidity_2m',
-        'cloud_density',      # New!
-        'wind_turbulence',    # New!
-        'topo_gap',           # New!
+        'cloud_density',
+        'wind_turbulence',
+        'topo_gap',
         'surface_pressure'
     ]
     
@@ -61,24 +71,5 @@ def addSnowIndicator(df):
         (df['cloud_density'] > 100)     # Ensures there's actually a thick cloud layer
     ).astype(int)
     
+    # it returns a df with a column with value 0 if it does not snowed and 1 if it did
     return df
-
-def cleanAndSnow(df):
-    weather_cleaned = utils.setUp(weather)
-
-    important_sensor_cols = [
-        'temperature_2m', 
-        'dew_point_2m', 
-        'relative_humidity_2m',
-        'surface_pressure',
-        'cloud_cover_mid',
-        'cloud_cover_low',
-        'wind_gusts_10m',
-        'wind_speed_10m'
-    ]
-
-    weather_cleaned = utils.remove_outliers(weather_cleaned, important_sensor_cols)
-
-    # Run the Detection
-    snow_df = addSnowIndicator(weather_cleaned)
-    return snow_df
