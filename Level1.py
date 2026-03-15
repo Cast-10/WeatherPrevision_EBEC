@@ -56,7 +56,7 @@ def testLevel1(df):
     print("==============================\n")
 
 # function to train level2 with all of the csv, to then predict the values that are going to be tested
-def Level2(df):
+def Level1(df):
     X, y = prepare_level1_data(df)
     model = trainLevel1(X, y)
     return model
