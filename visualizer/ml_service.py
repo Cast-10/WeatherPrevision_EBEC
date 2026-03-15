@@ -507,10 +507,7 @@ class MLService:
             predicted_wind = max(0.0, float(day_predictions.get("wind_speed_10m", 0.0)))
             predicted_humidity = day_predictions.get("relative_humidity_2m", None)
 
-            if predicted_rain <= 0.2:
-                hourly_rain = 0.0
-            else:
-                hourly_rain = predicted_rain / 24.0
+            hourly_rain = predicted_rain
 
             last_row = history.iloc[-1].copy()
             new_row = last_row.copy()
