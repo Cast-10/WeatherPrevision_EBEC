@@ -7,17 +7,17 @@ from sklearn.metrics import f1_score, classification_report, confusion_matrix
 import pandas as pd
 import random
 import utils
+import joblib
+
 weather = pd.read_csv("metherology_dataset.csv")
 
-def trainLevel1(df):
+def trainLevel1(df, seed, estimators=100):
     X = df.drop(columns=['isRaining'])
     y = df['isRaining']
     
-    seed = random.randint(1, 50)
-    
     X_train, X_val, X_test, y_train, y_val, y_test = utils.train_validate_test_split(X,y, randomState=seed)
     
-    model = RandomForestClassifier(n_estimators=100, random_state=seed)
+    model = RandomForestClassifier(n_estimators=estimators, random_state=seed)
     
     print("Training...")
     model.fit(X_train, y_train)
@@ -44,8 +44,7 @@ features = [
 weather = weather[features + ['isRaining']]
 weather = utils.remove_outliers(weather, features)
 
-model, X_val, X_test, y_val, y_test = trainLevel1(weather)
-
+model, X_val, X_test, y_val, y_test = trainLevel1(weather, seed=13, estimators=100)
 y_pred_val = model.predict(X_val)
-
-utils.print_f1_score(y_val, y_pred_val)
+current_f1 = utils.print_f1_score(y_val, y_pred_val)
+joblib.dump(model, 'finalModelLevel1.pkl')

@@ -51,11 +51,11 @@ def setUp(df):
 def train_validate_test_split(X, y, val_size=0.15, test_size=0.15, randomState=42):
     temp_size = val_size + test_size
     X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=temp_size, random_state=randomState, stratify=y
+        X, y, test_size=temp_size, random_state=randomState
     )
     relative_test_size = test_size / temp_size  # e.g. 0.15/0.30 = 0.50
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=relative_test_size, random_state=randomState, stratify=y_temp
+        X_temp, y_temp, test_size=relative_test_size, random_state=randomState
     )
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -80,3 +80,4 @@ def print_f1_score(y_true, y_pred, dataset_name="Validation"):
     print("  [TN  FP]")
     print("  [FN  TP]")
     print("=====================================\n")
+    return f1
