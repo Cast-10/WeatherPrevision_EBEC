@@ -9,7 +9,7 @@ import utils
 
 weather = pd.read_csv("metherology_dataset.csv")
 
-def trainLevel3(df):
+def addSnowIndicator(df):
     df = df.copy()
     
     # --- 1. Feature Engineering for Snow ---
@@ -59,43 +59,26 @@ def trainLevel3(df):
         (df['is_anomaly'] == -1) & 
         (df['temperature_2m'] < 2.5) &  # Standard snow threshold
         (df['cloud_density'] > 100)     # Ensures there's actually a thick cloud layer
-    )
-
+    ).astype(int)
     
-    print("Discovery Finished.")
-    print(f"Detected Snow Events: {df['detected_snow'].sum()}")
-    print(f"Detected Anomalies: {(df['is_anomaly'] == -1).sum()}")
-    
-    return df[df['detected_snow'] == True], model
+    return df
 
+def cleanAndSnow(df):
+    weather_cleaned = utils.setUp(weather)
 
-weather_cleaned = utils.setUp(weather)
+    important_sensor_cols = [
+        'temperature_2m', 
+        'dew_point_2m', 
+        'relative_humidity_2m',
+        'surface_pressure',
+        'cloud_cover_mid',
+        'cloud_cover_low',
+        'wind_gusts_10m',
+        'wind_speed_10m'
+    ]
 
-important_sensor_cols = [
-    'temperature_2m', 
-    'dew_point_2m', 
-    'relative_humidity_2m',
-    'surface_pressure',
-    'cloud_cover_mid',
-    'cloud_cover_low',
-    'wind_gusts_10m',
-    'wind_speed_10m'
-]
+    weather_cleaned = utils.remove_outliers(weather_cleaned, important_sensor_cols)
 
-weather_cleaned = utils.remove_outliers(weather_cleaned, important_sensor_cols)
-
-
-
-# Run the Detection
-snow_df, snow_model = trainLevel3(weather_cleaned)
-
-# --- Level 3 Evaluation ---
-print(f"\n===== Level 3 Snow Detection Evaluation =====")
-if len(snow_df) > 0:
-    print(f"Avg Temp during Snow: {snow_df['temperature_2m'].mean():.2f}°C")
-    print(f"Avg Humidity during Snow: {snow_df['relative_humidity_2m'].mean():.2f}%")
-    print("Top 5 Snow Events Found:")
-    print(snow_df[['location', 'temperature_2m', 'dew_point_2m', 'relative_humidity_2m']].head())
-else:
-    print("No snow detected. Try increasing 'contamination' in the IsolationForest.")
-print("=============================================\n")
+    # Run the Detection
+    snow_df = addSnowIndicator(weather_cleaned)
+    return snow_df
