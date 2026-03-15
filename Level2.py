@@ -79,4 +79,4 @@ def exportLevel2(df):
 
 
 weather = pd.read_csv("metherology_dataset.csv")
-testLevel2(weather)
+exportLevel2(weather)
