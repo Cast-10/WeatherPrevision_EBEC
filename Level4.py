@@ -5,7 +5,6 @@ import utils
 import Level3 as l3
 
 def trainLevel4(df):
-    
     # Separate Train and Validation before mean so we don't fall in Data Leakage
     train_size = int(len(df) * 0.7)
     df_train = df.iloc[:train_size].copy()
@@ -49,7 +48,7 @@ accidents_init = pd.read_csv("accidents_dataset.csv")
 
 accidents_init['day_of_week'] = pd.to_datetime(accidents_init['time']).dt.dayofweek
 accidents_init['is_weekend'] = accidents_init['day_of_week'].apply(lambda x: 1 if x >= 5 else 0)
-weather_init['is_snowing'] = l3.cleanAndSnow(weather_init)['detected_snow']
+weather_init['is_snowing'] = l3.Level3(weather_init)['detected_snow']
 
 weather = utils.setUp(weather_init)
 accidents = utils.setUpAccidents(accidents_init)

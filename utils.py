@@ -93,18 +93,3 @@ def setUpAccidents(df):
     # Dropping 'time' as it's now encoded. 
     df = df.drop(columns=['time'], errors='ignore')
     return df
-
-def print_f1_score(y_true, y_pred, dataset_name="Validation"):
-    """
-    Prints a full evaluation report including F1 score.
-    
-    Args:
-        y_true       : real labels
-        y_pred       : model predicted labels
-        dataset_name : just a label for printing (e.g. "Validation", "Test")
-    """
-    f1 = f1_score(y_true, y_pred)
-    
-    print(f"===== {dataset_name} Evaluation =====")
-    print(f"F1 Score: {f1:.4f}")
-    print("=====================================\n")
