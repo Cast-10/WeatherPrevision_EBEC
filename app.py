@@ -1,5 +1,6 @@
 import streamlit as st
 import joblib
+import pandas as pd
 
 from visualizer.data_loader import DataLoader
 from visualizer.weather_service import WeatherService
@@ -17,10 +18,18 @@ st.set_page_config(page_title="Weather Interface", layout="wide")
 loader = DataLoader("metherology_dataset.csv")
 df = loader.load_data()
 
+accidents_df = pd.read_csv("accidents_dataset.csv")
+
 temperature_model = joblib.load("finalModelLevel2.pkl")
+level4_model = joblib.load("finalModelLevel4.pkl")
 
 weather_service = WeatherService(df)
-ml_service = MLService(df, temperature_model=temperature_model)
+ml_service = MLService(
+    df,
+    accidents_df=accidents_df,
+    temperature_model=temperature_model,
+    level4_model=level4_model
+)
 
 future_panel = FuturePredictionPanel()
 accident_panel = AccidentForecastPanel()
