@@ -1,12 +1,8 @@
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score, classification_report, confusion_matrix
-import pandas as pd
+from sklearn.metrics import f1_score
 import utils
-import joblib
 
 def prepare_level1_data(df):
     df = df.copy()
@@ -42,7 +38,7 @@ def testLevel1(df):
     X, y = prepare_level1_data(df)
     
     # 2. Split
-    X_train, X_test, y_train, y_test = utils.train_test_split(X, y, shuffle=False, test_size=0.15)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.15)
 
     # 3. Train using the specific train function
     model = trainLevel1(X_train, y_train)

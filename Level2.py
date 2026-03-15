@@ -1,9 +1,6 @@
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
-import pandas as pd
 import utils
 import joblib
 
