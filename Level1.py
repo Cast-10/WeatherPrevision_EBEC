@@ -56,6 +56,10 @@ def Level1(df):
     X, y = prepare_level1_data(df)
     model = trainLevel1(X, y)
     return model
+def exportLevel1(df):
+    X, y = prepare_level1_data(df)
+    model = trainLevel1(X, y)
+    joblib.dump(model, 'finalModelLevel1.pkl')
 
 weather = pd.read_csv("metherology_dataset.csv")
 testLevel1(weather)

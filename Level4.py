@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 import utils
+import joblib
 import Level3 as l3
 
 # --- PREPARATION ---
@@ -122,6 +123,10 @@ def Level4(weather_raw, accidents_raw):
     model = trainLevel4(X, y)
     return model
 
+def exportLevel4(dfw, dfa):
+    X, y = prepare_level4_data(dfw, dfa)
+    model = trainLevel4(X, y)
+    joblib.dump(model, 'finalModelLevel4.pkl')
 # Execution
 weather_init = pd.read_csv("metherology_dataset.csv")
 accidents_init = pd.read_csv("accidents_dataset.csv")

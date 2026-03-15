@@ -3,3 +3,9 @@ __pycache__/
 .venv/
 venv/
 .gitignore
+*.pkl
+*.pkl
+venv/
+.venv/
+*.pkl
+__pycache__/
