@@ -13,4 +13,4 @@
 
 ### We had access to two different databases in .csv format (one with weather conditions and another with the accidents reports), which were used to learn, validate and test the code. Level 3 worked differently because it was the only one that was unsupervised.
 
-> In order to run the interface, wich is on website format and obviously local-hosted, you need to run the Level2, Level4 and Level5 export functions, to export the ML model and for it to be used on the inteface for the predictions. And the run ´´´streamlit run app.py´´´ on the terminal.
+> In order to run the interface, wich is on website format and obviously local-hosted, you need to run the Level2, Level4 and Level5 export functions, to export the ML model and for it to be used on the inteface for the predictions. And the run "streamlit run app.py" on the terminal.
