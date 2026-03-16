@@ -1,4 +1,4 @@
-# This project was made regarding the Empowered BEST Engineering Competition (EBEC Porto '26) 24 hour hackathon. The problem was the following:
+# This project was made regarding the Empowered BEST Engineering Competition (EBEC Porto '26) 24 hour hackathon. We finished in 🥈***2nd Place***. The problem was the following:
 ## If meteorology is not fully predictable, can Machine Learning help us understand it better? Can Machine Learning meaningfully support meteorological prediction, or does it become misleading when pushed too far?
 
 ### The hackathon was structured into six progressive levels:
